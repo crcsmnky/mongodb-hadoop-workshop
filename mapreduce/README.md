@@ -2,9 +2,9 @@
 
 ## Requirements
 
-- Java 1.7
-- Maven 3.x
-- Hadoop 2.4.1
+- [Java SE 1.7](http://www.oracle.com/technetwork/java/javase/downloads/jdk7-downloads-1880260.html)
+- [Maven](http://maven.apache.org) (latest)
+- [Hadoop 2.4.1](http://hadoop.apache.org)
 
 ## Building
 
