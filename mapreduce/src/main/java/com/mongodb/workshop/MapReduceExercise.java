@@ -27,14 +27,7 @@ import java.io.IOException;
  * is written back to MongoDB. Output can be written as a
  * new collection or as updates to the movies collection.
  *
- * $ hadoop jar target/mapreduce-1.0-SNAPSHOT.jar
- *      com.mongodb.workshop.MapReduceExercise
- *      mongodb://127.0.0.1:27017/movielens.ratings
- *      mongodb://127.0.0.1:27017/movielens.movies
- *      update=true
- *
  */
-
 public class MapReduceExercise
 {
     public static class Map extends Mapper<Object, BSONObject, IntWritable, DoubleWritable> {
@@ -98,16 +91,16 @@ public class MapReduceExercise
 
     public static void main(String[] args) throws IOException, InterruptedException, ClassNotFoundException {
         if(args.length < 3) {
-            System.out.println("Usage: MapReduceExercise " +
+            System.err.println("Usage: MapReduceExercise " +
                 "[mongodb input uri] " +
                 "[mongodb output uri] " +
                 "update=[true or false]");
 
-            System.out.println("Example: MapReduceExercise " +
+            System.err.println("Example: MapReduceExercise " +
                 "mongodb://127.0.0.1:27017/movielens.ratings " +
                 "mongodb://127.0.0.1:27017/movielens.ratings.stats update=false");
 
-            System.out.println("Example: MapReduceExercise " +
+            System.err.println("Example: MapReduceExercise " +
                 "mongodb://127.0.0.1:27017/movielens.ratings " +
                 "mongodb://127.0.0.1:27017/movielens.movies update=true");
 
