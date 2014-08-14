@@ -36,7 +36,6 @@ public class OrderByCountDesc extends EvalFunc<DataBag> {
         if (value instanceof DataBag) {
             DataBag bag = (DataBag) value;
 
-            // deduplicate and count tuples in the bag
             final Map<Tuple,Integer> tupleMap = new HashMap<Tuple,Integer>();
 
             for(Tuple tuple : bag) {
@@ -48,7 +47,6 @@ public class OrderByCountDesc extends EvalFunc<DataBag> {
                 }
             }
 
-            // sort the Tuples by count
             List<Tuple> tuples = new ArrayList<Tuple>();
             tuples.addAll(tupleMap.keySet());
 
@@ -63,7 +61,7 @@ public class OrderByCountDesc extends EvalFunc<DataBag> {
             return factory.newDefaultBag(tuples);
         }
         else {
-            throw new ExecException("Input must be a Bag of Tuples");
+            throw new ExecException("malformed input");
         }
     }
 
