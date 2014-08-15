@@ -36,5 +36,5 @@ ratings_count_ordered = FOREACH ratings_count
 ratings_count_flat = FOREACH ratings_count_ordered
     GENERATE movieid, FLATTEN(ordered_movieids.right) AS rmovieid;
 
-STORE ratings_count_flat INTO 'mongodb://127.0.0.1:27017/mlsmall.pigrecs'
+STORE ratings_count_flat INTO 'mongodb://127.0.0.1:27017/mlsmall.pig_exercise'
     USING com.mongodb.hadoop.pig.MongoStorage();
