@@ -35,9 +35,9 @@ public class MapReduceExercise
         public void map(final Object key, final BSONObject doc, final Context context)
           throws IOException, InterruptedException {
             final int movieId = (Integer)doc.get("movieid");
-            final double movieRating = (Double)doc.get("rating");
+            final Number movieRating = (Number)doc.get("rating");
 
-            context.write(new IntWritable(movieId), new DoubleWritable(movieRating));
+            context.write(new IntWritable(movieId), new DoubleWritable(movieRating.doubleValue()));
         }
     }
 
