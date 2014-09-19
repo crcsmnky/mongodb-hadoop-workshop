@@ -5,9 +5,7 @@ REGISTER target/libs/mongo-java-driver-2.12.3.jar;
 REGISTER target/pig-1.0-SNAPSHOT.jar;
 
 ratings = LOAD 'mongodb://127.0.0.1:27017/mlsmall.ratings'
-    USING com.mongodb.hadoop.pig.MongoLoader('userid,movieid,rating');
-
-DESCRIBE ratings;
+    USING com.mongodb.hadoop.pig.MongoLoader('userid:int,movieid:int,rating');
 
 ratings2 = FILTER ratings BY rating > 3;
 
@@ -30,11 +28,10 @@ ratings_join_userid3 = FOREACH ratings_join_userid2
 ratings_count = GROUP ratings_join_userid3 BY movieid;
 
 ratings_count_ordered = FOREACH ratings_count
-    GENERATE group as movieid,
-    com.mongodb.workshop.OrderByCountDesc($1) as ordered_movieids;
+    GENERATE group AS movieid,
+    com.mongodb.workshop.OrderByCountDesc($1) AS ordered_movieids;
 
-ratings_count_flat = FOREACH ratings_count_ordered
-    GENERATE movieid, FLATTEN(ordered_movieids.right) AS rmovieid;
+STORE ratings_count_ordered INTO 'mongodb://127.0.0.1:27017/mlsmall.pig_exercise'
+    USING com.mongodb.hadoop.pig.MongoStorage;
 
-STORE ratings_count_flat INTO 'mongodb://127.0.0.1:27017/mlsmall.pig_exercise'
-    USING com.mongodb.hadoop.pig.MongoStorage();
+

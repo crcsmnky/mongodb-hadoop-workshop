@@ -17,3 +17,4 @@ This step is required to
 ## Running
 
     $ pig PigExercise.pig
+
