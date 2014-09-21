@@ -16,7 +16,7 @@ import org.apache.spark.mllib.recommendation.ALS;
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel;
 import org.apache.spark.mllib.recommendation.Rating;
 import org.bson.BSONObject;
-//import org.slf4j.Logger;
+import org.slf4j.Logger;
 import scala.Tuple2;
 
 import java.util.Date;
@@ -47,7 +47,7 @@ public class SparkExercise
         // create SparkContext
         SparkConf conf = new SparkConf().setAppName("SparkExercise");
         JavaSparkContext sc = new JavaSparkContext(conf);
-//        Logger log = sc.sc().log();
+        Logger log = sc.sc().log();
 
         // create base MongoDB Configuration object
         Configuration mongodbConfig = new Configuration();
@@ -64,6 +64,7 @@ public class SparkExercise
                 }
             }
         );
+        log.warn("users = " + users.count());
 
         // create base BSON Configuration object
         Configuration bsonConfig = new Configuration();
@@ -78,6 +79,7 @@ public class SparkExercise
                 }
             }
         );
+        log.warn("movies = " + movies.count());
 
         // load ratings
         mongodbConfig.set("mongo.input.uri", MONGODB + ".ratings");
@@ -93,15 +95,18 @@ public class SparkExercise
                 }
             }
         );
+        log.warn("ratings = " + ratings.count());
 
         // generate all possible (user,movie) pairings
         JavaPairRDD<Object,Object> allUsersMovies = users.cartesian(movies);
+        log.warn("allUsersMovies = " + allUsersMovies.count());
 
         // train a collaborative filter model from existing ratings
         MatrixFactorizationModel model = ALS.train(ratings.rdd(), 10, 10, 0.01);
 
         // predict ratings
         JavaRDD<Rating> predictedRatings = model.predict(allUsersMovies.rdd()).toJavaRDD();
+        log.warn("predictedRatings = " + predictedRatings.count());
 
         // create BSON output RDD from predictions
         JavaPairRDD<Object,BSONObject> predictions = predictedRatings.mapToPair(
