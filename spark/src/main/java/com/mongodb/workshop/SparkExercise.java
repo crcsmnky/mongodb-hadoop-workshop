@@ -2,6 +2,7 @@ package com.mongodb.workshop;
 
 import com.mongodb.BasicDBObjectBuilder;
 import com.mongodb.DBObject;
+import com.mongodb.hadoop.BSONFileInputFormat;
 import com.mongodb.hadoop.MongoInputFormat;
 import com.mongodb.hadoop.MongoOutputFormat;
 import org.apache.hadoop.conf.Configuration;
@@ -10,13 +11,12 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
-import org.apache.spark.api.java.function.PairFlatMapFunction;
 import org.apache.spark.api.java.function.PairFunction;
 import org.apache.spark.mllib.recommendation.ALS;
 import org.apache.spark.mllib.recommendation.MatrixFactorizationModel;
 import org.apache.spark.mllib.recommendation.Rating;
 import org.bson.BSONObject;
-import org.slf4j.Logger;
+//import org.slf4j.Logger;
 import scala.Tuple2;
 
 import java.util.Date;
@@ -33,25 +33,29 @@ import java.util.Date;
 public class SparkExercise
 {
     public static void main(String[] args) {
-        if(args.length < 2) {
-            System.err.println("Usage: SparkExercise [mongodb db uri] [output collection name]");
+        if(args.length < 3) {
+            System.err.println("Usage: SparkExercise [hdfs path] [mongodb db uri] [output collection name]");
             System.err.println("Note: assumes existence of ratings, users, movies collections");
-            System.err.println("Example: SparkExercise mongodb://127.0.0.1:27017/movielens predictions");
+            System.err.println("Example: SparkExercise hdfs://localhost:9000 mongodb://127.0.0.1:27017/movielens predictions");
             System.exit(-1);
         }
+
+        final String HDFS = args[0];
+        final String MONGODB = args[1];
+        final String OUTPUT = args[2];
 
         // create SparkContext
         SparkConf conf = new SparkConf().setAppName("SparkExercise");
         JavaSparkContext sc = new JavaSparkContext(conf);
-        Logger log = sc.sc().log();
+//        Logger log = sc.sc().log();
 
-        // create base Configuration object
-        Configuration inputConfig = new Configuration();
-        inputConfig.set("mongo.job.input.format", "com.mongodb.hadoop.MongoInputFormat");
+        // create base MongoDB Configuration object
+        Configuration mongodbConfig = new Configuration();
+        mongodbConfig.set("mongo.job.input.format", "com.mongodb.hadoop.MongoInputFormat");
 
         // load users
-        inputConfig.set("mongo.input.uri", args[0] + ".users");
-        JavaRDD<Object> users = sc.newAPIHadoopRDD(inputConfig,
+        mongodbConfig.set("mongo.input.uri", MONGODB + ".users");
+        JavaRDD<Object> users = sc.newAPIHadoopRDD(mongodbConfig,
             MongoInputFormat.class, Object.class, BSONObject.class).map(
             new Function<Tuple2<Object, BSONObject>, Object>() {
                 @Override
@@ -61,12 +65,12 @@ public class SparkExercise
             }
         );
 
-        log.warn("users = " + users.count());
+        // create base BSON Configuration object
+        Configuration bsonConfig = new Configuration();
+        bsonConfig.set("mongo.job.input.format", "com.mongodb.hadoop.BSONFileInputFormat");
 
-        // load movies
-        inputConfig.set("mongo.input.uri", args[0] + ".movies");
-        JavaRDD<Object> movies = sc.newAPIHadoopRDD(inputConfig,
-            MongoInputFormat.class, Object.class, BSONObject.class).map(
+        JavaRDD<Object> movies = sc.newAPIHadoopFile(HDFS + "/movielens/movies.bson",
+            BSONFileInputFormat.class, Object.class, BSONObject.class, bsonConfig).map(
             new Function<Tuple2<Object, BSONObject>, Object>() {
                 @Override
                 public Object call(Tuple2<Object, BSONObject> doc) throws Exception {
@@ -75,11 +79,9 @@ public class SparkExercise
             }
         );
 
-        log.warn("movies = " + movies.count());
-
         // load ratings
-        inputConfig.set("mongo.input.uri", args[0] + ".ratings");
-        JavaRDD<Rating> ratings = sc.newAPIHadoopRDD(inputConfig,
+        mongodbConfig.set("mongo.input.uri", MONGODB + ".ratings");
+        JavaRDD<Rating> ratings = sc.newAPIHadoopRDD(mongodbConfig,
             MongoInputFormat.class, Object.class, BSONObject.class).map(
             new Function<Tuple2<Object, BSONObject>, Rating>() {
                 @Override
@@ -92,20 +94,14 @@ public class SparkExercise
             }
         );
 
-        log.warn("ratings = " + ratings.count());
+        // generate all possible (user,movie) pairings
+        JavaPairRDD<Object,Object> allUsersMovies = users.cartesian(movies);
 
         // train a collaborative filter model from existing ratings
         MatrixFactorizationModel model = ALS.train(ratings.rdd(), 10, 10, 0.01);
 
-        // generate all possible (user,movie) pairings
-        JavaPairRDD<Object,Object> allUsersMovies = users.cartesian(movies);
-
-        log.warn("allUsersMovies = " + allUsersMovies.count());
-
         // predict ratings
         JavaRDD<Rating> predictedRatings = model.predict(allUsersMovies.rdd()).toJavaRDD();
-
-        log.warn("predictedRatings = " + predictedRatings.count());
 
         // create BSON output RDD from predictions
         JavaPairRDD<Object,BSONObject> predictions = predictedRatings.mapToPair(
@@ -124,12 +120,10 @@ public class SparkExercise
             }
         );
 
-        log.warn(args[0] + "." + args[1] + " = " + predictions.count());
-
-        // create output configuration
+        // create MongoDB output Configuration
         Configuration outputConfig = new Configuration();
         outputConfig.set("mongo.output.format", "com.mongodb.hadoop.MongoOutputFormat");
-        outputConfig.set("mongo.output.uri", args[0] + "." + args[1]);
+        outputConfig.set("mongo.output.uri", MONGODB + "." + OUTPUT);
 
         predictions.saveAsNewAPIHadoopFile("file:///not-applicable",
             Object.class, Object.class, MongoOutputFormat.class, outputConfig);
