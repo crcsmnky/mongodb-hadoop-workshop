@@ -1,37 +1,21 @@
--- register dependencies
 REGISTER target/libs/mongo-hadoop-core-1.3.0.jar;
 REGISTER target/libs/mongo-hadoop-pig-1.3.0.jar;
 REGISTER target/libs/mongo-java-driver-2.12.3.jar;
-REGISTER target/pig-1.0-SNAPSHOT.jar;
+REGISTER target/libs/datafu-1.2.0.jar;
 
 ratings = LOAD 'mongodb://127.0.0.1:27017/mlsmall.ratings'
-    USING com.mongodb.hadoop.pig.MongoLoader('userid:int,movieid:int,rating');
+    USING com.mongodb.hadoop.pig.MongoLoader('movieid:int,rating:double');
 
-ratings2 = FILTER ratings BY rating > 3;
+grouped = GROUP ratings by movieid;
 
-ratings3 = FOREACH ratings2 GENERATE userid,movieid;
+ratings_stats = FOREACH grouped {
+    sum = SUM(ratings.rating);
+    mean = AVG(ratings.rating);
+    count = COUNT(ratings);
+    median = datafu.pig.stats.StreamingMedian(ratings.rating);
+    variance = datafu.pig.stats.VAR(ratings.rating);
+    GENERATE group as movieid, mean as mean, sum as sum, count as count, median.quantile_0_5 as median, variance as variance;
+}
 
-ratings4 = FOREACH ratings3 GENERATE *;
-
-ratings_join_movieid = JOIN ratings3 BY movieid, ratings4 BY movieid;
-
-ratings_join_movieid2 = FOREACH ratings_join_movieid
-    GENERATE $0 AS userid, $1 AS movieid, $3 AS tmovieid;
-
-ratings_join_userid = JOIN ratings_join_movieid2 BY userid, ratings3 BY userid;
-
-ratings_join_userid2 = FILTER ratings_join_userid BY $1 != $4;
-
-ratings_join_userid3 = FOREACH ratings_join_userid2
-    GENERATE $1 AS movieid, $4 AS rmovieid;
-
-ratings_count = GROUP ratings_join_userid3 BY movieid;
-
-ratings_count_ordered = FOREACH ratings_count
-    GENERATE group AS movieid,
-    com.mongodb.workshop.OrderByCountDesc($1) AS ordered_movieids;
-
-STORE ratings_count_ordered INTO 'mongodb://127.0.0.1:27017/mlsmall.pig_exercise'
+STORE ratings_stats INTO 'mongodb://127.0.0.1:27017/mlsmall.pig_exercise3'
     USING com.mongodb.hadoop.pig.MongoStorage;
-
-

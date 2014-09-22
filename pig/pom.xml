@@ -33,6 +33,11 @@
             <artifactId>pig</artifactId>
             <version>0.12.1</version>
         </dependency>
+        <dependency>
+            <groupId>com.linkedin.datafu</groupId>
+            <artifactId>datafu</artifactId>
+            <version>1.2.0</version>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
@@ -47,7 +52,7 @@
                         </goals>
                         <configuration>
                             <includeArtifactIds>
-                                mongo-hadoop-core,mongo-java-driver,mongo-hadoop-pig
+                                mongo-hadoop-core,mongo-java-driver,mongo-hadoop-pig,datafu
                             </includeArtifactIds>
                             <outputDirectory>${project.build.directory}/libs/</outputDirectory>
                             <overWriteReleases>false</overWriteReleases>
