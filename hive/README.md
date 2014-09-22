@@ -14,6 +14,7 @@
 Copy the depedencies in `target/libs` to the Hive `lib` directory. For example (assuming Hive is located in `/usr/local/hive`):
 
     $ cp target/libs/mongo-*.jar /usr/local/hive/lib/
+    $ cp target/libs/mongo-*.jar /usr/local/hadoop/share/hadoop/common/lib/
 
 ## Running
 
