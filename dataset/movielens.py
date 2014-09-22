@@ -1,10 +1,11 @@
 """
 
-usage: python movielens-10m100k.py [movies.dat] [ratings.dat]
+usage: python movielens.py [movies.dat] [ratings.dat]
 
 """
 
 from pymongo import MongoClient
+from pymongo import ASCENDING, DESCENDING
 from datetime import datetime
 import sys
 import re
@@ -76,8 +77,33 @@ def import_ratings(db, fratings):
             ratings, movies, users = [], [], []
 
 
-def main():
+def create_genres(db):
+    docs = list(db.movies.aggregate([
+        {'$unwind' : '$genres'},
+        {'$group': {
+            '_id': '$genres',
+            'count': {'$sum': 1}
+        }},
+    ], cursor={}))
 
+    genres = [
+        {'_id': idx, 'name': doc['_id'], 'count': doc['count']}
+        for idx, doc in enumerate(docs)
+    ]
+
+    db.command('insert', 'genres', documents=genres, ordered=False)
+
+
+def ensure_indexes(db):
+    db.movies.ensure_index("movieid")
+    db.movies.ensure_index("ratings")
+    db.movies.ensure_index("genres")
+    db.ratings.ensure_index([("userid", ASCENDING),("movieid", ASCENDING)])
+    db.users.ensure_index("userid")
+    db.genres.ensure_index("name")
+
+
+def main():
     db = MongoClient()['movielens']
 
     fmovies = open(sys.argv[1])
@@ -85,6 +111,9 @@ def main():
 
     import_movies(db, fmovies)
     import_ratings(db, fratings)
+    create_genres(db)
+    ensure_indexes(db)
+
 
 if __name__ == '__main__':
     main()
