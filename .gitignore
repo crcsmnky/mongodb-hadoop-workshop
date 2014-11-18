@@ -3,3 +3,4 @@
 .settings
 *.iml
 target
+.DS_Store
